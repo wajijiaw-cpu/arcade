@@ -21,11 +21,31 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // 玩游戏时屏幕不自动锁定、变暗
         UIApplication.shared.isIdleTimerDisabled = true
+        return true
+    }
 
-        let window = UIWindow(frame: UIScreen.main.bounds)
+    // 现代场景（Scene）生命周期：窗口必须挂到 UIWindowScene 上，
+    // 否则 WebKit 会把页面当成"没有正经显示在场景里"而压低刷新率
+    // （实测旧写法下游戏页只有约 15 帧，Safari 同页 59 帧）。
+    func application(_ application: UIApplication,
+                     configurationForConnecting connectingSceneSession: UISceneSession,
+                     options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+        let config = UISceneConfiguration(name: "Default Configuration",
+                                          sessionRole: connectingSceneSession.role)
+        config.delegateClass = AppDelegate.self
+        return config
+    }
+}
+
+extension AppDelegate: UIWindowSceneDelegate {
+
+    func scene(_ scene: UIScene,
+               willConnectTo session: UISceneSession,
+               options connectionOptions: UIScene.ConnectionOptions) {
+        guard let windowScene = scene as? UIWindowScene else { return }
+        let window = UIWindow(windowScene: windowScene)
         window.rootViewController = ViewController()
         window.makeKeyAndVisible()
         self.window = window
-        return true
     }
 }
