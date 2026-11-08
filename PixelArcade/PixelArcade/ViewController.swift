@@ -11,6 +11,11 @@ final class ViewController: UIViewController {
 
     private var webView: WKWebView!
 
+    // 系统触感：页面里的虚拟按键按下时经 JS 桥发来消息，这里触发真震感
+    private let impactLight = UIImpactFeedbackGenerator(style: .light)
+    private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
+    private let hapticHandler = HapticMessageHandler()
+
     // 隐藏状态栏，全屏显示
     override var prefersStatusBarHidden: Bool { true }
 
@@ -19,6 +24,9 @@ final class ViewController: UIViewController {
         view.backgroundColor = .black
 
         let configuration = WKWebViewConfiguration()
+        // 注册触感桥：window.webkit.messageHandlers.arcadeHaptic
+        hapticHandler.owner = self
+        configuration.userContentController.add(hapticHandler, name: "arcadeHaptic")
         // 视频/动画在页面内直接播放，不跳全屏播放器
         configuration.allowsInlineMediaPlayback = true
         // 游戏声音不需要用户先点一下才允许播放
@@ -45,7 +53,19 @@ final class ViewController: UIViewController {
         ])
         self.webView = webView
 
+        impactLight.prepare()
         loadHall()
+    }
+
+    /// 页面请求一次触感反馈（body 为 "medium" 时更重，其余一律轻触）
+    func performHaptic(style: String?) {
+        if style == "medium" {
+            impactMedium.impactOccurred()
+            impactMedium.prepare()
+        } else {
+            impactLight.impactOccurred()
+            impactLight.prepare()
+        }
     }
 
     private func loadHall() {
@@ -78,5 +98,20 @@ extension ViewController: WKNavigationDelegate {
             self?.loadHall()
         })
         present(alert, animated: true)
+    }
+}
+
+/// JS 桥的转发小对象：弱引用控制器，避免和 WebView 配置互相强引用
+final class HapticMessageHandler: NSObject, WKScriptMessageHandler {
+
+    weak var owner: ViewController?
+
+    func userContentController(_ userContentController: WKUserContentController,
+                               didReceive message: WKScriptMessage) {
+        guard message.name == "arcadeHaptic" else { return }
+        let style = message.body as? String
+        DispatchQueue.main.async { [weak self] in
+            self?.owner?.performHaptic(style: style)
+        }
     }
 }
