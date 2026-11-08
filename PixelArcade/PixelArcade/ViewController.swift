@@ -69,7 +69,11 @@ final class ViewController: UIViewController {
     }
 
     private func loadHall() {
-        webView.load(URLRequest(url: HallConfig.hallURL))
+        // 每次打开都绕过本地缓存拿大厅页：WebView 会把入口 HTML 缓存住，
+        // 站点更新后 App 还跑旧页面（位置/性能优化都到不了），故强制回源。
+        var request = URLRequest(url: HallConfig.hallURL)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        webView.load(request)
     }
 }
 
